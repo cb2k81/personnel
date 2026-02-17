@@ -1,9 +1,6 @@
 package de.cocondo.app.system.core.http;
 
 import de.cocondo.app.system.core.locale.LocalMessageProvider;
-import de.cocondo.app.system.core.security.auth.AuthenticationException;
-import de.cocondo.app.system.core.security.auth.InvalidCredentialsException;
-import de.cocondo.app.system.core.security.permission.PermissionDeniedException;
 import de.cocondo.app.system.event.EventPublisher;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.ValidationException;
@@ -44,27 +41,6 @@ public class GlobalExceptionHandler {
     @ResponseBody
     public ResponseEntity<ErrorResponse> handleNoHandlerFoundException(HttpServletRequest request, NoHandlerFoundException ex) {
         return logAndCreateErrorResponse(request, ex, HttpStatus.NOT_FOUND);
-    }
-
-    @ExceptionHandler(AuthenticationException.class)
-    @ResponseStatus(HttpStatus.UNAUTHORIZED)
-    @ResponseBody
-    public ResponseEntity<ErrorResponse> handleAuthenticationException(HttpServletRequest request, AuthenticationException ex) {
-        return logAndCreateErrorResponse(request, ex, HttpStatus.UNAUTHORIZED);
-    }
-
-    @ExceptionHandler(InvalidCredentialsException.class)
-    @ResponseStatus(HttpStatus.UNAUTHORIZED)
-    @ResponseBody
-    public ResponseEntity<ErrorResponse> handleInvalidCredentialsException(HttpServletRequest request, InvalidCredentialsException ex) {
-        return logAndCreateErrorResponse(request, ex, HttpStatus.UNAUTHORIZED);
-    }
-
-    @ExceptionHandler(PermissionDeniedException.class)
-    @ResponseStatus(HttpStatus.FORBIDDEN)
-    @ResponseBody
-    public ResponseEntity<ErrorResponse> handlePermissionDeniedException(HttpServletRequest request, PermissionDeniedException ex) {
-        return logAndCreateErrorResponse(request, ex, HttpStatus.FORBIDDEN);
     }
 
     @ExceptionHandler(EntityNotFoundException.class)

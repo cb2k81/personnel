@@ -1,7 +1,6 @@
 package de.cocondo.app.system.core.locale;
 
-import de.cocondo.app.system.core.security.auth.AuthenticationException;
-import de.cocondo.app.system.core.security.auth.InvalidCredentialsException;
+
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,8 +37,6 @@ public class LocalMessageProvider {
     // Configure under /resources/messages.properties
     static {
         exceptionCodeMap.put(NoHandlerFoundException.class, "error.not_found");
-        exceptionCodeMap.put(AuthenticationException.class, "error.unauthorized");
-        exceptionCodeMap.put(InvalidCredentialsException.class, "error.unauthorized");
         exceptionCodeMap.put(HttpRequestMethodNotSupportedException.class, "error.bad_request");
         exceptionCodeMap.put(MethodArgumentNotValidException.class, "error.bad_request");
     }
