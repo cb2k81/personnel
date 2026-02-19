@@ -1,38 +1,59 @@
 package de.cocondo.app.domain.personnel.staffing;
 
 import de.cocondo.app.system.entity.DomainEntity;
-import jakarta.persistence.Entity;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * file: /opt/cocondo/personnel/src/main/java/de/cocondo/app/domain/personnel/staffing/StaffingPlan.java
- *
- * Entity representing a concrete staffing plan version within a planning set. // Entität für eine konkrete Stellenplan-Variante innerhalb eines Planungsrahmens
+ * Entity innerhalb des Aggregats StaffingPlanSet: StaffingPlan (Planvariante)
  */
 @Entity
-@Table(name = "staffingplan")
+@Table(name = "staffing_plan")
 @Data
 @EqualsAndHashCode(callSuper = true)
 public class StaffingPlan extends DomainEntity {
 
-    @ManyToOne
-    private StaffingPlanSet staffingPlanSet; // Planungsrahmen
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    private StaffingPlanSet staffingPlanSet;
 
-    private String name; // Bezeichnung des Stellenplans
+    @Column(nullable = false)
+    private Integer versionNumber;
 
-    private Integer versionNumber; // Versionsnummer
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private PlanVariantType planVariantType;
 
-    private String state; // Status (DRAFT / APPROVED / ACTIVE / ARCHIVED)
+    /**
+     * Einheitlicher Workflow-Status (Sprint 1 Zielbild).
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private WorkflowStatus workflowStatus;
 
-    private String planType; // Typ (REAL / SIMULATION)
+    @Column(nullable = false)
+    private LocalDate validFrom;
 
-    private LocalDate validFrom; // Gültig ab
-    private LocalDate validTo; // Gültig bis
+    private LocalDate validTo;
 
-    private String description; // Beschreibung
+    /**
+     * Sicherheitsabschlag planweit (z.B. 0.10 für 10%).
+     * Faktor statt Prozent vermeidet Missverständnisse (0..1).
+     */
+    @Column(nullable = false, precision = 6, scale = 4)
+    private BigDecimal safetyDeductionFactor;
+
+    @OneToMany(
+            mappedBy = "staffingPlan",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.EAGER
+    )
+    @OrderBy("validFrom ASC")
+    private List<PlannedPost> plannedPosts = new ArrayList<>();
 }

@@ -1,52 +1,62 @@
 package de.cocondo.app.domain.personnel.assignment;
 
-import de.cocondo.app.domain.personnel.classification.CareerGroup;
 import de.cocondo.app.domain.personnel.person.Person;
-import de.cocondo.app.domain.personnel.staffing.PlannedPosition;
-import de.cocondo.app.domain.personnel.staffing.PositionType;
+import de.cocondo.app.domain.personnel.staffing.PlannedPost;
+import de.cocondo.app.domain.personnel.staffing.PlannedShare;
 import de.cocondo.app.system.entity.DomainEntity;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 /**
- * file: /opt/cocondo/personnel/src/main/java/de/cocondo/app/domain/personnel/assignment/PositionFilling.java
+ * Entity innerhalb des Aggregats StaffingAssignmentPlan:
+ * PositionFilling = konkrete Besetzung (Ist) bezogen auf PlannedPost und optional PlannedShare.
  *
- * Aggregate root representing the actual contractual filling of a planned position including deviations from plan. // Aggregat für die arbeitsvertragliche Besetzung einer Planstelle inkl. Abweichungen vom Plan
+ * - Tarif: plannedShare gesetzt
+ * - Beamte: plannedShare null, nur plannedPost
  */
 @Entity
-@Table(name = "positionfilling")
+@Table(name = "position_filling")
 @Data
 @EqualsAndHashCode(callSuper = true)
 public class PositionFilling extends DomainEntity {
 
-    @ManyToOne
-    private PlannedPosition plannedPosition; // Referenz auf Planstelle
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    private StaffingAssignmentPlan staffingAssignmentPlan;
 
-    @ManyToOne
-    private Person person; // Person
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    private PlannedPost plannedPost;
 
-    private LocalDate filledFrom; // Besetzt ab
-    private LocalDate filledTo; // Besetzt bis
+    @ManyToOne(optional = true, fetch = FetchType.LAZY)
+    private PlannedShare plannedShare;
 
-    private Integer contractualPortionPercent; // Arbeitsvertraglich gebundener Anteil
-
-    private Integer currentEmploymentPortionPercent; // Aktueller Beschäftigungsumfang
-
-    @Enumerated(EnumType.STRING)
-    private PositionFillingType fillingType; // Typ der Besetzung
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    private Person person;
 
     @Enumerated(EnumType.STRING)
-    private CareerGroup careerGroup; // Tatsächlich verwendete Laufbahngruppe (kann vom Plan abweichen)
+    @Column(nullable = false)
+    private PositionFillingType fillingType;
 
-    @Enumerated(EnumType.STRING)
-    private PositionType employmentType; // Tatsächliche Besetzungsart (Beamter/Tarif) (kann vom Plan abweichen)
+    /**
+     * Besetzt ab / bis (Ist).
+     */
+    @Column(nullable = false)
+    private LocalDate filledFrom;
 
-    private String description; // Beschreibung
+    private LocalDate filledTo;
+
+    /**
+     * Vertragsanteil in Prozent (0..100).
+     */
+    @Column(nullable = false, precision = 5, scale = 2)
+    private BigDecimal contractualPortionPercent;
+
+    /**
+     * Optional: aktueller Beschäftigungsumfang in Prozent (0..100).
+     */
+    @Column(precision = 5, scale = 2)
+    private BigDecimal currentEmploymentPercent;
 }

@@ -97,7 +97,7 @@ Zweck:
 Beispiel:
 
 ```
-public interface StaffingPlanSetRepository 
+public interface StaffingPlanSetRepository
     extends JpaRepository<StaffingPlanSet, String> {
 }
 ```
@@ -119,6 +119,8 @@ Manipulation erfolgt immer über das Aggregate Root.
 ---
 
 # 4. DTO-Strategie
+
+Fachliche DTOs transportieren ausschließlich Use-Case-relevante Daten. Technische Infrastruktur-Daten werden getrennt behandelt.
 
 ## 4.1 Response DTOs
 
@@ -215,4 +217,4 @@ Dieses Muster dient als Referenz für alle weiteren Aggregate.
 Die Layerarchitektur ist verbindlich definiert.
 Alle weiteren Aggregate müssen diesem Muster folgen.
 
-Dieses ADR ist Grundlage fü
+Dieses ADR ist Grundlage für die weitere Implementierung.

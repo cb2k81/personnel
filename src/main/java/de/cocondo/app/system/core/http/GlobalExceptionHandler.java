@@ -3,21 +3,21 @@ package de.cocondo.app.system.core.http;
 import de.cocondo.app.system.core.locale.LocalMessageProvider;
 import de.cocondo.app.system.event.EventPublisher;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ValidationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.properties.source.InvalidConfigurationPropertyValueException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.ControllerAdvice;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.ResponseBody;
-import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.NoHandlerFoundException;
 
-import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Map;
@@ -30,7 +30,6 @@ public class GlobalExceptionHandler {
     private final EventPublisher eventPublisher;
     private final LocalMessageProvider errorMessageProvider;
 
-    @Autowired
     public GlobalExceptionHandler(EventPublisher eventPublisher, LocalMessageProvider errorMessageProvider) {
         this.eventPublisher = eventPublisher;
         this.errorMessageProvider = errorMessageProvider;
@@ -44,9 +43,23 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(EntityNotFoundException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
     @ResponseBody
     public ResponseEntity<ErrorResponse> handleEntityNotFoundException(HttpServletRequest request, EntityNotFoundException ex) {
+        return logAndCreateErrorResponse(request, ex, HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ResponseBody
+    public ResponseEntity<ErrorResponse> handleIllegalArgumentException(HttpServletRequest request, IllegalArgumentException ex) {
+        return logAndCreateErrorResponse(request, ex, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(InvalidConfigurationPropertyValueException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ResponseBody
+    public ResponseEntity<ErrorResponse> handleInvalidConfigurationPropertyValueException(HttpServletRequest request, InvalidConfigurationPropertyValueException ex) {
         return logAndCreateErrorResponse(request, ex, HttpStatus.BAD_REQUEST);
     }
 
@@ -71,6 +84,27 @@ public class GlobalExceptionHandler {
         return logAndCreateErrorResponse(request, ex, HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(AccessDeniedException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    @ResponseBody
+    public ResponseEntity<ErrorResponse> handleAccessDeniedException(HttpServletRequest request, AccessDeniedException ex) {
+        return logAndCreateErrorResponse(request, ex, HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    @ResponseBody
+    public ResponseEntity<ErrorResponse> handleAuthenticationException(HttpServletRequest request, AuthenticationException ex) {
+        return logAndCreateErrorResponse(request, ex, HttpStatus.UNAUTHORIZED);
+    }
+
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ResponseBody
+    public ResponseEntity<ErrorResponse> handleOptimisticLockingFailureException(HttpServletRequest request, OptimisticLockingFailureException ex) {
+        return logAndCreateErrorResponse(request, ex, HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     @ResponseBody
@@ -78,30 +112,22 @@ public class GlobalExceptionHandler {
         return logAndCreateErrorResponse(request, ex, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    // Helper method to log request details and create an error response
     private ResponseEntity<ErrorResponse> logAndCreateErrorResponse(HttpServletRequest request, Exception ex, HttpStatus status) {
-        // Log the exception with additional information
         String message = String.format("Exception occurred for request %s %s from IP %s: %s",
                 request.getMethod(), request.getRequestURI(), request.getRemoteAddr(), ex.getMessage());
 
-        // Log full stack trace for the exception
         logger.error(message, ex);
 
-        // Log request details in debug mode
         if (logger.isDebugEnabled()) {
             logRequestDetails(request);
         }
 
-        // Log any causes of the exception
         logFullExceptionDetails(ex);
 
-        // Create and send an ErrorEvent to your event system
         RequestErrorEvent errorEvent = eventPublisher.publishRequestErrorEvent(this, ex, request);
 
-        // Get the localized error message
         String responseMessage = errorMessageProvider.getLocalizedErrorMessage(ex, request);
 
-        // Create and return an ErrorResponse
         ErrorResponse errorResponse = new ErrorResponse(
                 status.value(),
                 ex.getClass().getName(),
@@ -114,7 +140,6 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorResponse, status);
     }
 
-    // Helper method to log the full exception and any causes
     private void logFullExceptionDetails(Exception ex) {
         Throwable cause = ex;
         while (cause != null) {
@@ -123,7 +148,6 @@ public class GlobalExceptionHandler {
         }
     }
 
-    // Helper method to log request details
     private void logRequestDetails(HttpServletRequest request) {
         StringBuilder requestDetails = new StringBuilder();
         requestDetails.append("Request Details:\n");
@@ -132,7 +156,6 @@ public class GlobalExceptionHandler {
         requestDetails.append("[Request URI] : ").append(request.getRequestURI()).append("\n");
         requestDetails.append("[Remote Address] : ").append(request.getRemoteAddr()).append("\n");
 
-        // Get request parameters
         Map<String, String[]> parameterMap = request.getParameterMap();
         if (!parameterMap.isEmpty()) {
             requestDetails.append("[Request Parameters] : ");
@@ -141,7 +164,7 @@ public class GlobalExceptionHandler {
                 String[] parameterValues = entry.getValue();
                 requestDetails.append(parameterName).append("=").append(Arrays.toString(parameterValues)).append(", ");
             }
-            requestDetails.setLength(requestDetails.length() - 2); // Remove the trailing comma and space
+            requestDetails.setLength(requestDetails.length() - 2);
             requestDetails.append("\n");
         }
 

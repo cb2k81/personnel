@@ -1,27 +1,38 @@
 package de.cocondo.app.domain.personnel.organisation.organisationunit;
 
 import de.cocondo.app.system.entity.DomainEntity;
-import jakarta.persistence.Entity;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
- * file: /opt/cocondo/personnel/src/main/java/de/cocondo/app/domain/personnel/organisation/organisationunit/OrganisationUnit.java
+ * Aggregate Root: OrganisationUnit
  *
- * Entity representing an organizational unit in which positions are planned and filled. // Entität für eine Organisationseinheit, der Planstellen zugeordnet sind
+ * Root trägt nur die fachliche Identität (BusinessKey).
+ * Änderungen an fachlichen Daten erfolgen über Versionen (OrganisationUnitVersion).
  */
 @Entity
 @Data
-@Table(name = "organisationunit")
+@Table(
+        name = "organisationunit",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"org_unit_business_key"})
+)
 @EqualsAndHashCode(callSuper = true)
 public class OrganisationUnit extends DomainEntity {
 
-    private String name; // Name
+    @Column(name = "org_unit_business_key", nullable = false, updatable = false)
+    private String orgUnitBusinessKey;
 
-    private String state; // Status (z. B. stillgelegt) – spätere Enum // Status
+    @OneToMany(
+            mappedBy = "organisationUnit",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.EAGER
+    )
+    @OrderBy("validFrom ASC")
+    private List<OrganisationUnitVersion> versions = new ArrayList<>();
 
-    @ManyToOne
-    private OrganisationUnit parent; // Übergeordnete Organisationseinheit
 }

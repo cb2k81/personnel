@@ -1,28 +1,30 @@
 package de.cocondo.app.domain.personnel.staffing;
 
-import de.cocondo.app.domain.personnel.budget.BudgetRevision;
 import de.cocondo.app.system.entity.DomainEntity;
-import jakarta.persistence.Entity;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
- * file: /opt/cocondo/personnel/src/main/java/de/cocondo/app/domain/personnel/staffing/StaffingPlanSet.java
+ * Aggregate Root: StaffingPlanSet
  *
- * Entity representing a planning context for a specific budget revision containing alternative staffing plans. // Entität für einen Planungsrahmen zu einem Haushaltsänderungsstand mit mehreren Planvarianten
+ * Enthält alternative Planvarianten (StaffingPlan).
  */
 @Entity
-@Table(name = "staffingplanset")
+@Table(name = "staffing_plan_set")
 @Data
 @EqualsAndHashCode(callSuper = true)
 public class StaffingPlanSet extends DomainEntity {
 
-    @ManyToOne
-    private BudgetRevision budgetRevision; // Zugehöriger Haushaltsänderungsstand
-
-    private String name; // Bezeichnung des Planungsrahmens
-
-    private String description; // Beschreibung
+    @OneToMany(
+            mappedBy = "staffingPlanSet",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.EAGER
+    )
+    @OrderBy("versionNumber ASC, validFrom ASC")
+    private List<StaffingPlan> staffingPlans = new ArrayList<>();
 }

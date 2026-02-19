@@ -1,1 +1,50 @@
+# Datei: src/main/resources/application-test.yml
+#
 # application-test.yml - Test profile configuration
+#
+# Ziele:
+# - Isolierte Tests ohne externe Infrastruktur (H2 In-Memory DB)
+# - Schnelles Schema-Lifecycle-Handling (create-drop)
+# - Liquibase in Sprint 2 Tests deaktiviert (Schema kommt aus Hibernate DDL)
+#
+# Hinweise:
+# - Dieses Profil wird typischerweise via @ActiveProfiles("test") in Tests aktiviert.
+# - H2 läuft im Speicher, dadurch sind Tests reproduzierbar und schnell.
+
+spring:
+  application:
+    name: personnel-service
+
+  datasource:
+    url: jdbc:h2:mem:personnel;MODE=MariaDB;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        # H2-Dialekt ist für Tests ausreichend; MODE=MariaDB erhöht SQL-Kompatibilität.
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: true
+        show_sql: false
+        jdbc:
+          time_zone: UTC
+
+  liquibase:
+    enabled: false
+
+logging:
+  level:
+    root: INFO
+    org.springframework: INFO
+    org.hibernate.SQL: DEBUG
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

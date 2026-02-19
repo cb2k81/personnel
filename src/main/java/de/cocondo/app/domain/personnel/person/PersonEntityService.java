@@ -1,6 +1,9 @@
 package de.cocondo.app.domain.personnel.person;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -8,17 +11,7 @@ import java.util.Optional;
 /**
  * Entity service for the Person aggregate.
  *
- * This service encapsulates persistence access for Person entities
- * and operates exclusively on domain objects.
- *
- * Responsibilities:
- * - loading Person aggregates
- * - persisting Person aggregates
- *
- * This service:
- * - knows no DTOs
- * - knows no permissions
- * - contains no use-case orchestration
+ * Encapsulates persistence access for Person entities and operates exclusively on domain objects.
  */
 @Service
 @RequiredArgsConstructor
@@ -26,23 +19,27 @@ public class PersonEntityService {
 
     private final PersonRepository personRepository;
 
-    /**
-     * Loads a Person aggregate by its technical identifier.
-     *
-     * @param id technical identifier of the Person
-     * @return optional Person aggregate
-     */
     public Optional<Person> loadById(String id) {
         return personRepository.findById(id);
     }
 
     /**
-     * Persists the given Person aggregate.
-     *
-     * @param person Person aggregate to persist
-     * @return persisted Person aggregate
+     * Loads a single Person record with an additional specification (e.g. RLS).
+     * Used to enforce 404 for non-visible records (ADR 010).
      */
+    public Optional<Person> loadOne(Specification<Person> specification) {
+        return personRepository.findOne(specification);
+    }
+
     public Person save(Person person) {
         return personRepository.save(person);
+    }
+
+    public void delete(Person person) {
+        personRepository.delete(person);
+    }
+
+    public Page<Person> findAll(Specification<Person> specification, Pageable pageable) {
+        return personRepository.findAll(specification, pageable);
     }
 }
