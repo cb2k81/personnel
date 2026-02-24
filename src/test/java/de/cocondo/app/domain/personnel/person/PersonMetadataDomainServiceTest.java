@@ -10,13 +10,16 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.tuple;
 
 @SpringBootTest
 @ActiveProfiles("test")
+@Transactional
 class PersonMetadataDomainServiceTest {
 
     @Autowired
@@ -24,6 +27,10 @@ class PersonMetadataDomainServiceTest {
 
     @Autowired
     private PersonMetadataDomainService personMetadataDomainService;
+
+    // ----------------------------------------------------
+    // GET METADATA
+    // ----------------------------------------------------
 
     @Test
     @WithMockUser(authorities = {PersonPermissions.METADATA_READ})
@@ -33,15 +40,21 @@ class PersonMetadataDomainServiceTest {
         Person p = new Person();
         p.setFirstName("Max");
         p.setLastName("Mustermann");
+        p.setStatus(PersonStatus.ACTIVE);
+
+        personRepository.save(p); // ID erzeugen
 
         p.getTags().add("t1");
         p.addKeyValue("k1", "v1");
 
-        personRepository.save(p);
+        personRepository.save(p); // Metadata persistieren
 
-        DomainEntityMetadataDTO meta = personMetadataDomainService.getMetadata(p.getId());
+        DomainEntityMetadataDTO meta =
+                personMetadataDomainService.getMetadata(p.getId());
 
-        assertThat(meta.getTags()).containsExactlyInAnyOrder("t1");
+        assertThat(meta.getTags())
+                .containsExactlyInAnyOrder("t1");
+
         assertThat(meta.getKeyValuePairs())
                 .extracting(KeyValuePairDTO::getKey, KeyValuePairDTO::getValue)
                 .contains(tuple("k1", "v1"));
@@ -51,23 +64,38 @@ class PersonMetadataDomainServiceTest {
     @WithMockUser(authorities = {}) // no metadata rights
     @DisplayName("getMetadata without permission is denied")
     void getMetadata_withoutPermission_denied() {
+
         Person p = new Person();
         p.setFirstName("Max");
         p.setLastName("Mustermann");
+        p.setStatus(PersonStatus.ACTIVE);
+
         personRepository.save(p);
 
-        assertThatThrownBy(() -> personMetadataDomainService.getMetadata(p.getId()))
+        assertThatThrownBy(() ->
+                personMetadataDomainService.getMetadata(p.getId()))
                 .isInstanceOf(AccessDeniedException.class);
     }
 
+    // ----------------------------------------------------
+    // REPLACE METADATA
+    // ----------------------------------------------------
+
     @Test
-    @WithMockUser(authorities = {PersonPermissions.METADATA_UPDATE, PersonPermissions.METADATA_READ})
+    @WithMockUser(authorities = {
+            PersonPermissions.METADATA_UPDATE,
+            PersonPermissions.METADATA_READ
+    })
     @DisplayName("replaceMetadata clears existing metadata and sets inbound")
     void replaceMetadata_replacesAll() {
 
         Person p = new Person();
         p.setFirstName("Max");
         p.setLastName("Mustermann");
+        p.setStatus(PersonStatus.ACTIVE);
+
+        personRepository.save(p);
+
         p.getTags().add("oldTag");
         p.addKeyValue("oldKey", "oldVal");
         personRepository.save(p);
@@ -80,63 +108,97 @@ class PersonMetadataDomainServiceTest {
         inbound.setTags(Set.of("newTag"));
         inbound.setKeyValuePairs(Set.of(kv));
 
-        DomainEntityMetadataDTO updated = personMetadataDomainService.replaceMetadata(p.getId(), inbound);
+        DomainEntityMetadataDTO updated =
+                personMetadataDomainService.replaceMetadata(p.getId(), inbound);
 
-        assertThat(updated.getTags()).containsExactlyInAnyOrder("newTag");
+        assertThat(updated.getTags())
+                .containsExactlyInAnyOrder("newTag");
+
         assertThat(updated.getKeyValuePairs())
                 .extracting(KeyValuePairDTO::getKey, KeyValuePairDTO::getValue)
                 .contains(tuple("newKey", "newVal"))
                 .doesNotContain(tuple("oldKey", "oldVal"));
     }
 
+    // ----------------------------------------------------
+    // PATCH METADATA
+    // ----------------------------------------------------
+
     @Test
-    @WithMockUser(authorities = {PersonPermissions.METADATA_UPDATE, PersonPermissions.METADATA_READ})
+    @WithMockUser(authorities = {
+            PersonPermissions.METADATA_UPDATE,
+            PersonPermissions.METADATA_READ
+    })
     @DisplayName("patchMetadata: null inbound does not change anything")
     void patchMetadata_nullInbound_noChange() {
 
         Person p = new Person();
         p.setFirstName("Max");
         p.setLastName("Mustermann");
+        p.setStatus(PersonStatus.ACTIVE);
+
+        personRepository.save(p);
+
         p.getTags().add("t1");
         p.addKeyValue("k1", "v1");
         personRepository.save(p);
 
-        DomainEntityMetadataDTO metaBefore = personMetadataDomainService.getMetadata(p.getId());
-        DomainEntityMetadataDTO metaAfter = personMetadataDomainService.patchMetadata(p.getId(), null);
+        DomainEntityMetadataDTO before =
+                personMetadataDomainService.getMetadata(p.getId());
 
-        assertThat(metaAfter.getTags()).isEqualTo(metaBefore.getTags());
-        assertThat(metaAfter.getKeyValuePairs()).isEqualTo(metaBefore.getKeyValuePairs());
+        DomainEntityMetadataDTO after =
+                personMetadataDomainService.patchMetadata(p.getId(), null);
+
+        assertThat(after.getTags()).isEqualTo(before.getTags());
+        assertThat(after.getKeyValuePairs())
+                .isEqualTo(before.getKeyValuePairs());
     }
 
     @Test
-    @WithMockUser(authorities = {PersonPermissions.METADATA_UPDATE, PersonPermissions.METADATA_READ})
-    @DisplayName("patchMetadata: if tags != null -> tags are replaced, if keyValuePairs == null -> kv stays unchanged")
+    @WithMockUser(authorities = {
+            PersonPermissions.METADATA_UPDATE,
+            PersonPermissions.METADATA_READ
+    })
+    @DisplayName("patchMetadata: partial update replaces tags but keeps keyValuePairs")
     void patchMetadata_partialUpdate() {
 
         Person p = new Person();
         p.setFirstName("Max");
         p.setLastName("Mustermann");
+        p.setStatus(PersonStatus.ACTIVE);
+
+        personRepository.save(p);
+
         p.getTags().add("oldTag");
         p.addKeyValue("k1", "v1");
         personRepository.save(p);
 
         DomainEntityMetadataDTO inbound = new DomainEntityMetadataDTO();
         inbound.setTags(Set.of("newTag"));
-        inbound.setKeyValuePairs(null); // keep kv as-is per service logic :contentReference[oaicite:4]{index=4}
+        inbound.setKeyValuePairs(null); // KV bleiben unverändert
 
-        DomainEntityMetadataDTO updated = personMetadataDomainService.patchMetadata(p.getId(), inbound);
+        DomainEntityMetadataDTO updated =
+                personMetadataDomainService.patchMetadata(p.getId(), inbound);
 
-        assertThat(updated.getTags()).containsExactlyInAnyOrder("newTag");
+        assertThat(updated.getTags())
+                .containsExactlyInAnyOrder("newTag");
+
         assertThat(updated.getKeyValuePairs())
                 .extracting(KeyValuePairDTO::getKey, KeyValuePairDTO::getValue)
                 .contains(tuple("k1", "v1"));
     }
 
+    // ----------------------------------------------------
+    // UNKNOWN PERSON
+    // ----------------------------------------------------
+
     @Test
     @WithMockUser(authorities = {PersonPermissions.METADATA_READ})
     @DisplayName("metadata calls for unknown person -> EntityNotFoundException")
     void metadata_unknownPerson_throws() {
-        assertThatThrownBy(() -> personMetadataDomainService.getMetadata("does-not-exist"))
+
+        assertThatThrownBy(() ->
+                personMetadataDomainService.getMetadata("does-not-exist"))
                 .isInstanceOf(EntityNotFoundException.class);
     }
 }

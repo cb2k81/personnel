@@ -1,9 +1,10 @@
 package de.cocondo.app.domain.personnel.organisation.organisationunit;
 
+import lombok.Getter;
+import lombok.Setter;
 import de.cocondo.app.system.entity.DomainEntity;
 import jakarta.persistence.*;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 
 import java.time.LocalDate;
 
@@ -14,9 +15,9 @@ import java.time.LocalDate;
  * Zeitliche Gültigkeit wird über validFrom/validTo abgebildet.
  */
 @Entity
-@Data
+@Getter
+@Setter
 @Table(name = "organisationunit_version")
-@EqualsAndHashCode(callSuper = true)
 public class OrganisationUnitVersion extends DomainEntity {
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)

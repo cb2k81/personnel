@@ -1,9 +1,10 @@
 package de.cocondo.app.domain.personnel.staffing;
 
+import lombok.Getter;
+import lombok.Setter;
 import de.cocondo.app.system.entity.DomainEntity;
 import jakarta.persistence.*;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -14,9 +15,9 @@ import java.util.List;
  * Entity innerhalb des Aggregats StaffingPlanSet: StaffingPlan (Planvariante)
  */
 @Entity
+@Getter
+@Setter
 @Table(name = "staffing_plan")
-@Data
-@EqualsAndHashCode(callSuper = true)
 public class StaffingPlan extends DomainEntity {
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)

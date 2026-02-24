@@ -2,92 +2,114 @@ package de.cocondo.app.system.entity;
 
 import de.cocondo.app.system.entity.metadata.KeyValuePair;
 import jakarta.persistence.*;
-import lombok.Data;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.hibernate.Hibernate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
-@Data
 @Entity
 @EntityListeners({DomainEntityListener.class, AuditingEntityListener.class})
 @Inheritance(strategy = InheritanceType.TABLE_PER_CLASS)
 public abstract class DomainEntity implements Identifyable, Auditable, Taggable {
 
-    private static final Logger logger = LoggerFactory.getLogger(DomainEntity.class);
-
     @Id
-    String id;
+    protected String id;
 
     @Version
-    private Long persistenceVersion;
+    protected Long persistenceVersion;
 
     @ElementCollection(fetch = FetchType.EAGER)
+    protected Set<String> tags = new HashSet<>();
 
-    Set<String> tags = new HashSet<>();
+    protected String createdBy;
+    protected LocalDateTime createdAt;
+    protected String lastModifiedBy;
+    protected LocalDateTime lastModifiedAt;
 
-    private String createdBy;
-    private LocalDateTime createdAt;
-    private String lastModifiedBy;
-    private LocalDateTime lastModifiedAt;
+    @OneToMany(mappedBy = "domainEntity",
+            cascade = CascadeType.ALL,
+            fetch = FetchType.EAGER,
+            orphanRemoval = true)
+    protected Set<KeyValuePair> keyValuePairs = new HashSet<>();
 
-    // Key-Value Store für zusätzliche Daten
-    @OneToMany(mappedBy = "domainEntity", cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
-    private Set<KeyValuePair> keyValuePairs = new HashSet<>();
+    // ----------------------------------------
+    // equals / hashCode (JPA-safe, FINAL)
+    // ----------------------------------------
 
-    // Hinzufügen eines Key-Value-Paares
+    @Override
+    public final boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null) return false;
+        if (Hibernate.getClass(this) != Hibernate.getClass(o)) return false;
+        DomainEntity that = (DomainEntity) o;
+        return id != null && Objects.equals(id, that.id);
+    }
+
+    @Override
+    public final int hashCode() {
+        return getClass().hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + "(id=" + id + ")";
+    }
+
+    // ----------------------------------------
+    // Getter / Setter
+    // ----------------------------------------
+
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
+
+    public Long getPersistenceVersion() { return persistenceVersion; }
+
+    public Set<String> getTags() { return tags; }
+
+    public void setTags(Set<String> tags) {
+        this.tags = tags != null ? tags : new HashSet<>();
+    }
+
+    public Set<KeyValuePair> getKeyValuePairs() {
+        return keyValuePairs;
+    }
+
     public void addKeyValue(String key, String value) {
-        logger.debug("Attempting to add key-value pair: key='{}', value='{}' to entity with ID '{}'", key, value, this.getId());
-
-        // Überprüfen, ob die Entity eine gültige ID hat
-        if (this.getId() == null || this.getId().isEmpty()) {
-            logger.error("Entity with ID '{}' must have a valid ID before adding key-value pairs", this.getId());
-            throw new IllegalStateException("Entity must have a valid ID before adding key-value pairs");
-        }
-
-        // Überprüfen, ob der Key bereits existiert und ggf. überschreiben
-        KeyValuePair existingKvPair = keyValuePairs.stream()
-                .filter(kvPair -> kvPair.getKey().equals(key) && kvPair.getEntityId().equals(this.getId()))
-                .findFirst()
-                .orElse(null);
-
-        if (existingKvPair != null) {
-            // Wenn der Key bereits existiert, überschreiben
-            logger.warn("Key '{}' already exists for entity with ID '{}'. Overwriting with new value.", key, this.getId());
-            existingKvPair.setValue(value); // Überschreibe den Wert
-        } else {
-            // Wenn der Key nicht existiert, neuen Key-Wert-Paar hinzufügen
-            KeyValuePair kvPair = new KeyValuePair();
-            kvPair.setEntityId(this.getId()); // Setze die ID der DomainEntity
-            kvPair.setKey(key);
-            kvPair.setValue(value);
-            kvPair.setDomainEntity(this);
-            keyValuePairs.add(kvPair);
-        }
+        KeyValuePair kv = new KeyValuePair();
+        kv.setDomainEntity(this);
+        kv.setKey(key);
+        kv.setValue(value);
+        this.keyValuePairs.add(kv);
     }
 
-
-    // Entfernen eines Key-Value-Paares
     public void removeKeyValue(String key) {
-        logger.debug("Removing key-value pair with key='{}' from entity with ID '{}'", key, this.getId());
-        keyValuePairs.removeIf(kvPair -> kvPair.getKey().equals(key) && kvPair.getEntityId().equals(this.getId()));
+        this.keyValuePairs.removeIf(kv -> kv.getKey().equals(key));
     }
 
-    // Wert nach Schlüssel abrufen
     public String getValueByKey(String key) {
-        logger.debug("Retrieving value for key='{}' from entity with ID '{}'", key, this.getId());
-        return keyValuePairs.stream()
-                .filter(kvPair -> kvPair.getKey().equals(key) && kvPair.getEntityId().equals(this.getId()))
+        return this.keyValuePairs.stream()
+                .filter(kv -> kv.getKey().equals(key))
                 .map(KeyValuePair::getValue)
                 .findFirst()
                 .orElse(null);
     }
 
-    // Alle Key-Value-Paare abrufen
     public Set<KeyValuePair> getAllKeyValues() {
-        logger.debug("Retrieving all key-value pairs from entity with ID '{}'", this.getId());
         return keyValuePairs;
     }
+
+    public String getCreatedBy() { return createdBy; }
+    public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public String getLastModifiedBy() { return lastModifiedBy; }
+    public void setLastModifiedBy(String lastModifiedBy) { this.lastModifiedBy = lastModifiedBy; }
+
+    public LocalDateTime getLastModifiedAt() { return lastModifiedAt; }
+    public void setLastModifiedAt(LocalDateTime lastModifiedAt) { this.lastModifiedAt = lastModifiedAt; }
 }

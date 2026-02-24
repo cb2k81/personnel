@@ -1,12 +1,13 @@
 package de.cocondo.app.domain.personnel.assignment;
 
+import lombok.Getter;
+import lombok.Setter;
 import de.cocondo.app.domain.personnel.person.Person;
 import de.cocondo.app.domain.personnel.staffing.PlannedPost;
 import de.cocondo.app.domain.personnel.staffing.PlannedShare;
 import de.cocondo.app.system.entity.DomainEntity;
 import jakarta.persistence.*;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -19,9 +20,9 @@ import java.time.LocalDate;
  * - Beamte: plannedShare null, nur plannedPost
  */
 @Entity
+@Getter
+@Setter
 @Table(name = "position_filling")
-@Data
-@EqualsAndHashCode(callSuper = true)
 public class PositionFilling extends DomainEntity {
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)

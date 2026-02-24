@@ -2,16 +2,15 @@ package de.cocondo.app.domain.personnel.person;
 
 import de.cocondo.app.system.entity.DomainEntity;
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDate;
 
-/**
- * Entity Klasse für die natürliche Person
- */
 @Entity
 @Table(name = "person")
-@Data
+@Getter
+@Setter
 public class Person extends DomainEntity {
 
     private String firstName;

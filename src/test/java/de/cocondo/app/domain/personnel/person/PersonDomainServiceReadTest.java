@@ -1,8 +1,6 @@
 package de.cocondo.app.domain.personnel.person;
 
-import de.cocondo.app.domain.personnel.person.dto.PersonCreateDTO;
 import de.cocondo.app.domain.personnel.person.dto.PersonDTO;
-import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,19 +21,25 @@ class PersonDomainServiceReadTest {
     @Autowired
     private PersonDomainService personDomainService;
 
+    @Autowired
+    private PersonRepository personRepository;
+
     @Test
     @WithMockUser(authorities = PersonPermissions.READ)
     @DisplayName("READ permission: existing person is returned")
     void getPerson_existing_returnsDto() {
 
-        PersonCreateDTO create = new PersonCreateDTO();
-        create.setFirstName("Max");
-        create.setLastName("Mustermann");
-        create.setBirthday(LocalDate.of(1990, 1, 1));
+        // Setup direkt über Repository (kein CREATE-Recht notwendig)
+        Person person = new Person();
+        person.setFirstName("Max");
+        person.setLastName("Mustermann");
+        person.setBirthday(LocalDate.of(1990, 1, 1));
+        person.setStatus(PersonStatus.ACTIVE);
 
-        PersonDTO created = personDomainService.createPerson(create);
+        personRepository.save(person);
 
-        Optional<PersonDTO> loaded = personDomainService.getPersonById(created.getId());
+        Optional<PersonDTO> loaded =
+                personDomainService.getPersonById(person.getId());
 
         assertTrue(loaded.isPresent());
         assertEquals("Max", loaded.get().getFirstName());
@@ -51,6 +55,40 @@ class PersonDomainServiceReadTest {
                 personDomainService.getPersonById("does-not-exist");
 
         assertTrue(result.isEmpty());
+    }
+
+    @Test
+    @WithMockUser(authorities = PersonPermissions.READ)
+    @DisplayName("RLS: INACTIVE with READ but without READ_INACTIVE -> empty result")
+    void getPerson_inactive_withoutReadInactive_returnsEmpty() {
+
+        Person p = new Person();
+        p.setFirstName("Ina");
+        p.setLastName("Inactive");
+        p.setStatus(PersonStatus.INACTIVE);
+        personRepository.save(p);
+
+        Optional<PersonDTO> loaded = personDomainService.getPersonById(p.getId());
+
+        assertTrue(loaded.isEmpty());
+    }
+
+    @Test
+    @WithMockUser(authorities = {PersonPermissions.READ, PersonPermissions.READ_INACTIVE})
+    @DisplayName("RLS: INACTIVE with READ + READ_INACTIVE -> dto is returned")
+    void getPerson_inactive_withReadInactive_returnsDto() {
+
+        Person p = new Person();
+        p.setFirstName("Ina");
+        p.setLastName("Inactive");
+        p.setStatus(PersonStatus.INACTIVE);
+        personRepository.save(p);
+
+        Optional<PersonDTO> loaded = personDomainService.getPersonById(p.getId());
+
+        assertTrue(loaded.isPresent());
+        assertEquals("Ina", loaded.get().getFirstName());
+        assertEquals("Inactive", loaded.get().getLastName());
     }
 
     @Test

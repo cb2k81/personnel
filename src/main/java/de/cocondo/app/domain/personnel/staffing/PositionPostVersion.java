@@ -1,10 +1,11 @@
 package de.cocondo.app.domain.personnel.staffing;
 
+import lombok.Getter;
+import lombok.Setter;
 import de.cocondo.app.domain.personnel.organisation.organisationunit.OrganisationUnit;
 import de.cocondo.app.system.entity.DomainEntity;
 import jakarta.persistence.*;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 
 import java.time.LocalDate;
 
@@ -14,9 +15,9 @@ import java.time.LocalDate;
  * Budget-Referenz MVP: nur als String (oberflächlich, keine tiefe Budget-Domäne im Sprint 1).
  */
 @Entity
-@Data
+@Getter
+@Setter
 @Table(name = "position_post_version")
-@EqualsAndHashCode(callSuper = true)
 public class PositionPostVersion extends DomainEntity {
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)

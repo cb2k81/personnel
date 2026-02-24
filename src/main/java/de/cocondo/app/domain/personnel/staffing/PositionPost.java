@@ -1,9 +1,10 @@
 package de.cocondo.app.domain.personnel.staffing;
 
+import lombok.Getter;
+import lombok.Setter;
 import de.cocondo.app.system.entity.DomainEntity;
 import jakarta.persistence.*;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,12 +16,12 @@ import java.util.List;
  * Fachliche Änderungen erfolgen über PositionPostVersion.
  */
 @Entity
-@Data
+@Getter
+@Setter
 @Table(
         name = "position_post",
         uniqueConstraints = @UniqueConstraint(columnNames = {"post_business_key"})
 )
-@EqualsAndHashCode(callSuper = true)
 public class PositionPost extends DomainEntity {
 
     @Column(name = "post_business_key", nullable = false, updatable = false)

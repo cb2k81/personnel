@@ -1,9 +1,10 @@
 package de.cocondo.app.domain.personnel.staffing;
 
+import lombok.Getter;
+import lombok.Setter;
 import de.cocondo.app.system.entity.DomainEntity;
 import jakarta.persistence.*;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,9 +15,9 @@ import java.util.List;
  * Enthält alternative Planvarianten (StaffingPlan).
  */
 @Entity
+@Getter
+@Setter
 @Table(name = "staffing_plan_set")
-@Data
-@EqualsAndHashCode(callSuper = true)
 public class StaffingPlanSet extends DomainEntity {
 
     @OneToMany(

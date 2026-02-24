@@ -1,10 +1,11 @@
 package de.cocondo.app.domain.personnel.staffing;
 
+import lombok.Getter;
+import lombok.Setter;
 import de.cocondo.app.domain.personnel.organisation.organisationunit.OrganisationUnit;
 import de.cocondo.app.system.entity.DomainEntity;
 import jakarta.persistence.*;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -15,9 +16,9 @@ import java.util.List;
  * PlannedPost = geplante Stelle (Instanz einer PositionPost in einem konkreten StaffingPlan).
  */
 @Entity
+@Getter
+@Setter
 @Table(name = "planned_post")
-@Data
-@EqualsAndHashCode(callSuper = true)
 public class PlannedPost extends DomainEntity {
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)

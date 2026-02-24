@@ -2,7 +2,7 @@
 
 ## Status
 
-Geplant – vor Implementierung der Unit- und Integrationstests
+Überarbeitet – angepasst an getrennte Service-Architektur (Domain / State / Privacy)
 
 ---
 
@@ -10,13 +10,21 @@ Geplant – vor Implementierung der Unit- und Integrationstests
 
 Ziel dieses Testplans ist es, für das Aggregat **Person** eine belastbare, sicherheitsorientierte und architekturkonforme Teststrategie zu definieren.
 
+Die Architektur trennt nun explizit:
+
+* PersonDomainService (CRUD + RLS + Hard Delete)
+* PersonStateService (Workflow / Statusänderungen)
+* PersonPrivacyService (Anonymisierung / DSGVO-Operation)
+* PersonMetadataDomainService (Tags + KeyValue)
+
 Der Fokus liegt auf:
 
 * fachlicher Korrektheit
 * Record-Level Security (ADR 010)
 * Command Permissions (ADR 009)
-* Anonymisierungslogik beim Delete
-* stabiler Weiterentwicklung durch Service-Tests
+* sauberer Trennung von Delete und Anonymisierung
+* klarer Workflow-Architektur
+* Security-by-Design
 
 Dabei gilt ausdrücklich:
 
@@ -24,18 +32,19 @@ Dabei gilt ausdrücklich:
 * Äquivalenzklassen statt Variantenexplosion
 * Edge-Cases werden gezielt geprüft
 * Negativfälle (Exceptions) werden explizit getestet
-* Security-by-Design wird durch Tests nachgewiesen
+* Keine implizite Fallback-Logik
 
 ---
 
 # 2. Teststrategie
 
-Primär getestet wird:
+Primär getestet werden:
 
-* `PersonDomainService`
-* `PersonMetadataDomainService`
+* PersonDomainService
+* PersonStateService
+* PersonPrivacyService
+* PersonMetadataDomainService
 * RLS-Specifications
-* zentrale Sicherheitsregeln
 
 Controller-Tests sind nicht Bestandteil dieses Plans.
 
@@ -47,13 +56,13 @@ Controller-Tests sind nicht Bestandteil dieses Plans.
 
 Verwendung von:
 
-* `@SpringBootTest`
+* @SpringBootTest
 * H2 InMemory Database
 * aktiviertem Spring Security Context
 
 Ziel:
 
-* Prüfung von `@PreAuthorize`
+* Prüfung von @PreAuthorize
 * Prüfung der RLS-Logik
 * Prüfung von Transaktionsverhalten
 * Prüfung von JPA + Specification Kombination
@@ -94,10 +103,6 @@ Erwartung:
 
 ### A2 – CREATE ohne Permission
 
-Bedingungen:
-
-* User besitzt keine CREATE-Permission
-
 Erwartung:
 
 * AccessDeniedException
@@ -105,10 +110,6 @@ Erwartung:
 ---
 
 ### A3 – Edge: Gender null
-
-Bedingungen:
-
-* Gender nicht gesetzt
 
 Erwartung:
 
@@ -129,15 +130,9 @@ Erwartung:
 
 ### B2 – INACTIVE lesen ohne READ_INACTIVE
 
-Bedingungen:
-
-* Person INACTIVE
-* User hat READ, aber nicht READ_INACTIVE
-
 Erwartung:
 
 * Optional.empty()
-* Controller würde 404 erzeugen
 
 ---
 
@@ -213,7 +208,7 @@ Erwartung:
 
 ---
 
-## D. UPDATE
+## D. UPDATE (Attribute only)
 
 ### D1 – Erfolgreiches Update
 
@@ -224,6 +219,7 @@ Bedingungen:
 Erwartung:
 
 * Felder geändert
+* Status unverändert
 
 ---
 
@@ -251,9 +247,17 @@ Erwartung:
 
 ---
 
-## E. DELETE
+### D5 – Status kann nicht über Update verändert werden
 
-### E1 – Hard Delete (keine Referenzen)
+Erwartung:
+
+* Status bleibt unverändert
+
+---
+
+## E. DELETE (Hard Delete only)
+
+### E1 – Hard Delete ohne Referenzen
 
 Erwartung:
 
@@ -261,15 +265,17 @@ Erwartung:
 
 ---
 
-### E2 – Anonymisierung bei Referenz
+### E2 – DELETE mit Referenzen
+
+Setup:
+
+* Person mit PositionFilling
 
 Erwartung:
 
-* firstName null
-* lastName = "ANONYMIZED"
-* gender null
-* birthday null
-* Entity weiterhin vorhanden
+* IllegalStateException
+* Entity bleibt unverändert
+* Keine Anonymisierung
 
 ---
 
@@ -285,11 +291,87 @@ Erwartung:
 
 Erwartung:
 
+* EntityNotFoundException (RLS greift)
+
+---
+
+# 5. Testfälle – PersonStateService
+
+## S1 – Activate mit STATE_UPDATE
+
+Erwartung:
+
+* Status = ACTIVE
+
+---
+
+## S2 – Deactivate mit STATE_UPDATE
+
+Erwartung:
+
+* Status = INACTIVE
+
+---
+
+## S3 – STATE_UPDATE ohne Permission
+
+Erwartung:
+
+* AccessDeniedException
+
+---
+
+## S4 – Statuswechsel unbekannte ID
+
+Erwartung:
+
 * EntityNotFoundException
 
 ---
 
-# 5. Metadata-Service Tests
+# 6. Testfälle – PersonPrivacyService
+
+## P1 – Erfolgreiche Anonymisierung
+
+Erwartung:
+
+* Status = ANONYMIZED
+* firstName ersetzt
+* middleName ersetzt
+* lastName ersetzt
+* salutation ersetzt
+* academicTitle ersetzt
+* gender = null
+* birthday = null
+
+---
+
+## P2 – ANONYMIZE ohne Permission
+
+Erwartung:
+
+* AccessDeniedException
+
+---
+
+## P3 – Anonymisierung unbekannte ID
+
+Erwartung:
+
+* EntityNotFoundException
+
+---
+
+## P4 – Idempotente Anonymisierung
+
+Erwartung:
+
+* Zweiter Aufruf führt nicht zu Fehler
+* Status bleibt ANONYMIZED
+
+---
+
+# 7. Metadata-Service Tests
 
 ### F1 – METADATA_READ erlaubt
 
@@ -323,7 +405,7 @@ Erwartung:
 
 ---
 
-# 6. Edge-Case-Prüfungen
+# 8. Edge-Case-Prüfungen
 
 * Null birthday
 * Null gender
@@ -333,29 +415,32 @@ Erwartung:
 
 ---
 
-# 7. Security-by-Design Nachweis
+# 9. Security-by-Design Nachweis
 
 Durch diese Tests wird nachgewiesen:
 
 * Methoden sind atomar über Permissions geschützt
-* Keine Rollenabhängigkeit im Code
+* Delete und Anonymisierung sind strikt getrennt
+* Workflow ist vom Attribute-Update entkoppelt
 * RLS greift bei READ, UPDATE und DELETE
 * Nicht sichtbare Datensätze erzeugen 404-Semantik
 * Kein Informationsleck über INACTIVE Datensätze
 
 ---
 
-# 8. Erwarteter Testumfang
+# 10. Erwarteter Testumfang
 
 | Bereich  | Anzahl Tests |
 | -------- | ------------ |
 | Create   | 3            |
 | Read     | 5            |
 | List     | 4            |
-| Update   | 4            |
+| Update   | 5            |
 | Delete   | 4            |
+| State    | 4            |
+| Privacy  | 4            |
 | Metadata | 4            |
 
-Erwartet: ca. 24–26 Tests
+Erwartet: ca. 33 Tests
 
-Dieser Umfang ist angemessen für ein sicherheitsrelevantes Aggregat ohne Test-Inflation.
+Dieser Umfang ist angemessen für ein sicherheitsrelevantes Aggregat mit getrennter Wo

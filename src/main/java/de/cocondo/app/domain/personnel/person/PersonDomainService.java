@@ -23,7 +23,7 @@ import java.util.Optional;
  * Responsibilities:
  * - Enforces business rules
  * - Applies Record-Level Security (ADR 010)
- * - Differentiates between hard delete and anonymization
+ * - Hard delete only (no implicit anonymization)
  *
  * Architectural constraints:
  * - No repository access in controller layer
@@ -39,7 +39,6 @@ public class PersonDomainService {
     private final PersonEntityService personEntityService;
     private final PersonMapper personMapper;
     private final PositionFillingRepository positionFillingRepository;
-    private final PersonAnonymizationProperties anonymizationProperties;
 
     /**
      * Creates a new Person.
@@ -103,12 +102,14 @@ public class PersonDomainService {
     }
 
     /**
-     * Updates a person if visible under RLS.
+     * Updates person attributes (NOT workflow/state changes).
+     *
+     * Workflow/state is managed via PersonStateService.
      */
     @PreAuthorize("hasAuthority(T(de.cocondo.app.domain.personnel.person.PersonPermissions).UPDATE)")
     public PersonDTO updatePerson(String id, PersonPayloadDTO payloadDTO) {
 
-        log.debug("Updating Person id={}", id);
+        log.debug("Updating Person attributes id={}", id);
 
         Specification<Person> rls = buildPersonReadRlsSpec();
 
@@ -120,21 +121,21 @@ public class PersonDomainService {
 
         Person persisted = personEntityService.save(person);
 
-        log.info("Person updated id={} status={}", persisted.getId(), persisted.getStatus());
+        log.info("Person updated (attributes) id={} status={}", persisted.getId(), persisted.getStatus());
 
         return personMapper.toDto(persisted);
     }
 
     /**
-     * Deletes a person.
+     * Hard deletes a person.
      *
-     * If no references exist → hard delete.
-     * If references exist → anonymize.
+     * Rule:
+     * - If references exist -> throw (no fallback anonymization).
      */
     @PreAuthorize("hasAuthority(T(de.cocondo.app.domain.personnel.person.PersonPermissions).DELETE)")
     public void deletePerson(String id) {
 
-        log.debug("Delete requested for Person id={}", id);
+        log.debug("Hard delete requested for Person id={}", id);
 
         Specification<Person> rls = buildPersonReadRlsSpec();
 
@@ -143,43 +144,13 @@ public class PersonDomainService {
                 .orElseThrow(() -> new EntityNotFoundException("Person not found: " + id));
 
         boolean hasReferences = positionFillingRepository.existsByPerson_Id(id);
-
-        if (!hasReferences) {
-
-            log.info("Hard-deleting Person id={}", id);
-
-            personEntityService.delete(person);
-            return;
+        if (hasReferences) {
+            throw new IllegalStateException("Cannot hard delete Person with references: " + id);
         }
 
-        log.info("Person id={} has references -> performing anonymization", id);
+        log.info("Hard-deleting Person id={}", id);
 
-        anonymize(person);
-        personEntityService.save(person);
-
-        log.info("Person id={} anonymized successfully", id);
-    }
-
-    /**
-     * Performs anonymization of PII fields.
-     */
-    private void anonymize(Person person) {
-
-        String replacement = anonymizationProperties.getDefaultValue();
-
-        log.debug("Applying anonymization replacement value='{}' for person id={}",
-                replacement, person.getId());
-
-        person.setStatus(PersonStatus.ANONYMIZED);
-
-        person.setFirstName(replacement);
-        person.setMiddleName(replacement);
-        person.setLastName(replacement);
-        person.setSalutation(replacement);
-        person.setAcademicTitle(replacement);
-
-        person.setGender(null);
-        person.setBirthday(null);
+        personEntityService.delete(person);
     }
 
     /**

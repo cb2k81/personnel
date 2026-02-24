@@ -1,9 +1,10 @@
 package de.cocondo.app.domain.personnel.staffing;
 
+import lombok.Getter;
+import lombok.Setter;
 import de.cocondo.app.system.entity.DomainEntity;
 import jakarta.persistence.*;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -13,9 +14,9 @@ import java.time.LocalDate;
  * PlannedShare = geplanter Anteil einer PlannedPost.
  */
 @Entity
+@Getter
+@Setter
 @Table(name = "planned_share")
-@Data
-@EqualsAndHashCode(callSuper = true)
 public class PlannedShare extends DomainEntity {
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)

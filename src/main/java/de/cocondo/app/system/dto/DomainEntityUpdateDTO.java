@@ -1,11 +1,9 @@
 package de.cocondo.app.system.dto;
 
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 
 import java.io.Serial;
 
-@EqualsAndHashCode(callSuper = true)
 @Data
 public class DomainEntityUpdateDTO extends DomainEntityInboundDTO {
     @Serial
