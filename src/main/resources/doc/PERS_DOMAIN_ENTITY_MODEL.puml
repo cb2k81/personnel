@@ -1,0 +1,167 @@
+@startuml
+skinparam classAttributeIconSize 0
+
+' =============================
+' PERSON
+' =============================
+
+class Person {
+  id : UUID
+  firstName : String
+  middleName : String
+  lastName : String
+  salutation : String
+  academicTitle : String
+  gender : Gender
+  birthday : LocalDate
+  status : PersonStatus
+}
+
+' =============================
+' ORGANISATION
+' =============================
+
+class OrganisationUnit {
+  id : UUID
+  businessKey : String
+}
+
+class OrganisationUnitVersion {
+  validFrom : LocalDate
+  validTo : LocalDate
+  name : String
+}
+
+OrganisationUnit "1" -- "1..*" OrganisationUnitVersion
+OrganisationUnitVersion "0..1" --> "1" OrganisationUnitVersion : parent
+
+' =============================
+' POSITION MASTER DATA
+' =============================
+
+class PositionPost {
+  id : UUID
+  postBusinessKey : String
+}
+
+class PositionPostVersion {
+  validFrom : LocalDate
+  validTo : LocalDate
+  title : String
+}
+
+PositionPost "1" -- "1..*" PositionPostVersion
+
+' =============================
+' STAFFING PLAN (SOLL)
+' =============================
+
+class StaffingPlanSet {
+  id : UUID
+  name : String
+}
+
+class StaffingPlan {
+  id : UUID
+  versionNumber : int
+  validFrom : LocalDate
+  planVariantType : PlanVariantType
+  workflowStatus : WorkflowStatus
+  safetyDeductionFactor : BigDecimal
+}
+
+StaffingPlanSet "1" -- "1..*" StaffingPlan
+
+class PlannedPost {
+  validFrom : LocalDate
+}
+
+StaffingPlan "1" -- "1..*" PlannedPost
+PlannedPost --> PositionPost
+PlannedPost --> OrganisationUnit
+
+class PlannedShare {
+  percentage : BigDecimal
+}
+
+PlannedPost "1" -- "0..*" PlannedShare
+
+' =============================
+' STAFFING ASSIGNMENT (IST)
+' =============================
+
+class StaffingAssignmentPlan {
+  id : UUID
+  workflowStatus : WorkflowStatus
+  validFrom : LocalDate
+}
+
+StaffingAssignmentPlan --> StaffingPlan
+
+class PositionFilling {
+  filledFrom : LocalDate
+  contractualPortionPercent : BigDecimal
+  fillingType : PositionFillingType
+}
+
+StaffingAssignmentPlan "1" -- "0..*" PositionFilling
+PositionFilling --> Person
+PositionFilling --> PlannedPost
+
+' =============================
+' BUDGET
+' =============================
+
+class Budget {
+  id : UUID
+  name : String
+}
+
+class BudgetAccount {
+  accountNumber : String
+  amount : BigDecimal
+}
+
+class BudgetRevision {
+  revisionNumber : int
+  validFrom : LocalDate
+}
+
+Budget "1" -- "0..*" BudgetAccount
+Budget "1" -- "0..*" BudgetRevision
+
+' =============================
+' ENUMS
+' =============================
+
+enum Gender {
+  MALE
+  FEMALE
+  DIVERSE
+  UNKNOWN
+}
+
+enum PersonStatus {
+  ACTIVE
+  ANONYMIZED
+  INACTIVE
+}
+
+enum WorkflowStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  ARCHIVED
+}
+
+enum PlanVariantType {
+  APPROVED
+  SCENARIO
+}
+
+enum PositionFillingType {
+  BASE_CONTRACT
+  TEMPORARY_INCREASE
+}
+
+@enduml

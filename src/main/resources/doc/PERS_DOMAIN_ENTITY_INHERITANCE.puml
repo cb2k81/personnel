@@ -1,0 +1,42 @@
+@startuml
+
+abstract class DomainEntity {
+id : String
+persistenceVersion : Long
+createdAt : Instant
+createdBy : String
+lastModifiedAt : Instant
+lastModifiedBy : String
+}
+
+class Person
+class OrganisationUnit
+class OrganisationUnitVersion
+class PositionPost
+class PositionPostVersion
+class StaffingPlanSet
+class StaffingPlan
+class PlannedPost
+class PlannedShare
+class StaffingAssignmentPlan
+class PositionFilling
+class Budget
+class BudgetAccount
+class BudgetRevision
+
+DomainEntity <|-- Person
+DomainEntity <|-- OrganisationUnit
+DomainEntity <|-- OrganisationUnitVersion
+DomainEntity <|-- PositionPost
+DomainEntity <|-- PositionPostVersion
+DomainEntity <|-- StaffingPlanSet
+DomainEntity <|-- StaffingPlan
+DomainEntity <|-- PlannedPost
+DomainEntity <|-- PlannedShare
+DomainEntity <|-- StaffingAssignmentPlan
+DomainEntity <|-- PositionFilling
+DomainEntity <|-- Budget
+DomainEntity <|-- BudgetAccount
+DomainEntity <|-- BudgetRevision
+
+@enduml
